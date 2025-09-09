@@ -22,6 +22,7 @@ style={{
 maxWidth: 560,
 margin: "0 auto",
 background: "white",
+border: "1px solid #e5e7eb",
 borderRadius: 12,
 padding: 24,
 boxShadow: "0 8px 24px rgba(0,0,0,.06)",

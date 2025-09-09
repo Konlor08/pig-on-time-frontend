@@ -1,19 +1,23 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+// src/components/RoleGate.tsx
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import type { Role } from '../types';
 
-type Props = {
-allow: Array<"admin" | "dispatcher" | "driver" | "farm" | "user">;
+export default function RoleGate({
+allow,
+children,
+}: {
+allow: Role[];
 children: React.ReactNode;
-};
+}) {
+const { profile, loading } = useAuth();
 
-export default function RoleGate({ allow, children }: Props) {
-const { session, profile, loading } = useAuth();
+if (loading) return null;
+if (!profile) return <Navigate to="/login" replace />;
 
-if (loading) return null; // รอเช็ค session ก่อน
-if (!session) return <Navigate to="/login" replace />;
-
-const role = profile?.role ?? "user";
-if (!allow.includes(role)) return <Navigate to="/dashboard" replace />;
+const ok = allow.includes((profile.role as Role) ?? 'driver');
+if (!ok) return <Navigate to="/dashboard" replace />;
 
 return <>{children}</>;
 }

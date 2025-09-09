@@ -4,19 +4,22 @@ import { supabase } from "../supabaseClient";
 import AuthLayout from "./AuthLayout";
 import { useAuth } from "../hooks/useAuth";
 
-type Role = "user" | "driver" | "dispatcher" | "farm" | "admin";
+// 👉 นำเข้าชนิดและคงที่ที่ถูกต้อง
+import { type Role, ROLE_LABEL, ROLES_FOR_SIGNUP } from "../types";
 
 export default function ProfileForm() {
 const { session } = useAuth();
-const [fullName, setFullName] = useState("");
-const [phone, setPhone] = useState("");
-const [role, setRole] = useState<Role>("user");
+
+const [fullName, setFullName] = useState<string>("");
+const [phone, setPhone] = useState<string>("");
+// default ให้ role เป็น animal_husbandry ตามที่ต้องการ
+const [role, setRole] = useState<Role>("animal_husbandry");
 
 const [loading, setLoading] = useState(true);
 const [msg, setMsg] = useState<string | null>(null);
 const [err, setErr] = useState<string | null>(null);
 
-// โหลดโปรไฟล์จาก DB
+// โหลดโปรไฟล์
 useEffect(() => {
 async function fetchProfile() {
 try {
@@ -25,16 +28,17 @@ const { data, error } = await supabase
 .from("profiles")
 .select("full_name, phone, role")
 .eq("id", session.user.id)
-.single();
+.maybeSingle();
 
 if (error) throw error;
+
 if (data) {
 setFullName(data.full_name ?? "");
 setPhone(data.phone ?? "");
-setRole((data.role as Role) ?? "user");
+if (data.role) setRole(data.role as Role);
 }
 } catch (e: unknown) {
-setErr(e instanceof Error ? e.message : "Failed to load profile.");
+setErr(e instanceof Error ? e.message : "Load profile failed");
 } finally {
 setLoading(false);
 }
@@ -43,135 +47,114 @@ fetchProfile();
 }, [session?.user?.id]);
 
 // บันทึกโปรไฟล์
-const handleSave = async (e: FormEvent) => {
+async function handleSubmit(e: FormEvent) {
 e.preventDefault();
-setMsg(null);
 setErr(null);
-
+setMsg(null);
 try {
-if (!session?.user?.id) {
-setErr("No session found. Please login again.");
-return;
-}
+if (!session?.user?.id) throw new Error("No user session");
 
-const updates = {
-full_name: fullName || null,
-phone: phone || null,
+const payload = {
+id: session.user.id,
+email: session.user.email,
+full_name: fullName,
+phone,
 role,
-updated_at: new Date(),
 };
 
-const { error } = await supabase
-.from("profiles")
-.update(updates)
-.eq("id", session.user.id);
-
+const { error } = await supabase.from("profiles").upsert(payload, {
+onConflict: "id",
+});
 if (error) throw error;
-setMsg("Profile updated successfully ✅");
+
+setMsg("Saved successfully");
 } catch (e: unknown) {
-setErr(e instanceof Error ? e.message : "Update failed.");
+setErr(e instanceof Error ? e.message : "Save failed");
 }
+}
+
+if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
+
+const inputStyle: React.CSSProperties = {
+display: "block",
+width: "100%",
+padding: "10px",
+marginBottom: "12px",
+border: "1px solid #ccc",
+borderRadius: 6,
+fontSize: 14,
+};
+const labelStyle: React.CSSProperties = {
+fontWeight: 600,
+display: "block",
+marginBottom: 6,
+};
+const submitStyle: React.CSSProperties = {
+width: "100%",
+padding: "12px 16px",
+borderRadius: 8,
+border: "none",
+color: "white",
+background: "#2563eb",
+cursor: "pointer",
+fontSize: 16,
+};
+const errBoxStyle: React.CSSProperties = {
+color: "white",
+background: "#dc2626",
+padding: "10px 12px",
+borderRadius: 8,
+marginBottom: 12,
+};
+const okBoxStyle: React.CSSProperties = {
+color: "#065f46",
+background: "#d1fae5",
+padding: "10px 12px",
+borderRadius: 8,
+marginBottom: 12,
+border: "1px solid #10b981",
 };
 
 return (
-<AuthLayout title="My Profile">
-{loading ? (
-<div>Loading...</div>
-) : (
-<form onSubmit={handleSave}>
-<label style={label}>Full name</label>
+<AuthLayout title="Profile">
+<form onSubmit={handleSubmit}>
+{err && <div style={errBoxStyle}>{err}</div>}
+{msg && <div style={okBoxStyle}>{msg}</div>}
+
+<label style={labelStyle}>Full name</label>
 <input
-style={input}
-type="text"
+style={inputStyle}
 value={fullName}
 onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-required
+placeholder="ชื่อ-นามสกุล"
 />
 
-<label style={label}>Phone</label>
+<label style={labelStyle}>Phone</label>
 <input
-style={input}
-type="tel"
+style={inputStyle}
 value={phone}
 onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+placeholder="08xxxxxxxx"
 />
 
-<label style={label}>Role</label>
+<label style={labelStyle}>Role</label>
 <select
-style={input}
+style={inputStyle}
 value={role}
 onChange={(e: ChangeEvent<HTMLSelectElement>) => setRole(e.target.value as Role)}
 >
-<option value="user">User</option>
-<option value="driver">Driver</option>
-<option value="dispatcher">Dispatcher</option>
-<option value="farm">Farm</option>
-<option value="admin">Admin</option>
+{/* ✅ ใช้ ROLES_FOR_SIGNUP และกำหนดชนิด r: Role */}
+{ROLES_FOR_SIGNUP.map((r: Role) => (
+<option key={r} value={r}>
+{ROLE_LABEL[r]}
+</option>
+))}
 </select>
 
-{err && <div style={errBox}>{err}</div>}
-{msg && <div style={okBox}>{msg}</div>}
-
-<button type="submit" style={btn}>
-Save profile
+<button type="submit" style={submitStyle}>
+Save
 </button>
 </form>
-)}
 </AuthLayout>
 );
 }
-
-/* ---------- inline styles ---------- */
-const input: React.CSSProperties = {
-display: "block",
-width: "100%",
-padding: "10px 12px",
-marginBottom: "12px",
-border: "1px solid #cbd5e1",
-borderRadius: 10,
-outline: "none",
-fontSize: 16,
-boxSizing: "border-box",
-};
-
-const label: React.CSSProperties = {
-fontWeight: 600,
-marginBottom: 4,
-display: "block",
-color: "#334155",
-};
-
-const btn: React.CSSProperties = {
-width: "100%",
-padding: "12px 16px",
-marginTop: 8,
-fontSize: 16,
-fontWeight: 700,
-color: "white",
-background: "#2563eb",
-border: "none",
-borderRadius: 8,
-cursor: "pointer",
-};
-
-const errBox: React.CSSProperties = {
-color: "#991b1b",
-background: "#fee2e2",
-border: "1px solid #fecaca",
-padding: "10px 12px",
-borderRadius: 8,
-marginTop: 6,
-marginBottom: 6,
-fontSize: 14,
-};
-
-const okBox: React.CSSProperties = {
-color: "#14532d",
-background: "#dcfce7",
-border: "1px solid #bbf7d0",
-padding: "10px 12px",
-borderRadius: 8,
-marginTop: 6,
-marginBottom: 6,
-fontSize: 14,
-};
