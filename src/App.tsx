@@ -45,7 +45,7 @@ return (
 <Route
 path="/dashboard"
 element={
-<RoleGate allow={["user", "driver", "dispatcher", "farm", "admin"]}>
+<RoleGate allow={["animal_husbandry", "shipper", "planning", "manager", "admin" , "driver", "factory"]}>
 <Dashboard />
 </RoleGate>
 }
