@@ -1,6 +1,6 @@
 // src/types.ts
 
-// 1) type ของบทบาททั้งหมดในระบบ (คง admin ไว้ แต่จะไม่ให้เลือกตอนสมัคร)
+// Enum Role ต้องตรงกับ Supabase ENUM: role_type
 export type Role =
 | 'animal_husbandry'
 | 'shipper'
@@ -8,21 +8,21 @@ export type Role =
 | 'manager'
 | 'driver'
 | 'factory'
-| 'admin';
+| 'admin'; // admin ใช้เฉพาะ server/service role
 
-// 2) ป้ายชื่อสำหรับแสดงผล (ให้ครบทุก role รวม admin)
+// Label สำหรับแสดงใน UI
 export const ROLE_LABEL: Record<Role, string> = {
+admin: 'Admin',
 animal_husbandry: 'Animal Husbandry',
 shipper: 'Shipper',
 planning: 'Planning',
 manager: 'Manager',
 driver: 'Driver',
 factory: 'Factory',
-admin: 'Admin',
 };
 
-// 3) รายการ role ที่ “อนุญาตให้เลือกตอนสมัคร” (ตัด admin ออก)
-export const ROLES_FOR_SIGNUP: Exclude<Role, 'admin'>[] = [
+// Role ที่อนุญาตให้เลือกตอนสมัคร (exclude admin)
+export const ROLES_FOR_SIGNUP: Role[] = [
 'animal_husbandry',
 'shipper',
 'planning',
@@ -31,12 +31,13 @@ export const ROLES_FOR_SIGNUP: Exclude<Role, 'admin'>[] = [
 'factory',
 ];
 
-// 4) โครงสร้างข้อมูลโปรไฟล์ (ถ้าใช้)
+// Profile interface ให้ตรงกับ table public.profiles
 export interface Profile {
 id: string;
-email: string | null;
+email: string;
 full_name: string | null;
 phone: string | null;
-role: Role; // อนุญาตให้ admin ได้ (ตั้งจาก DB ภายหลัง)
-created_at: string; // หรือ Date ถ้าแปลงแล้ว
+role: Role;
+created_at: string;
+updated_at: string;
 }
